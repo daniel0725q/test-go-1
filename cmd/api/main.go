@@ -81,6 +81,7 @@ func main() {
 
 	// Initialize repositories
 	stockRatingRepo := repository.NewStockRatingRepository(db)
+	jobRepo := repository.NewJobRepository(db)
 	externalAPIRepo := repository.NewExternalAPIRepository(
 		config.ExternalAPI.BaseURL,
 		time.Duration(config.ExternalAPI.Timeout)*time.Second,
@@ -88,7 +89,7 @@ func main() {
 	)
 
 	// Initialize service
-	stockRatingSvc := usecase.NewStockRatingService(stockRatingRepo, externalAPIRepo)
+	stockRatingSvc := usecase.NewStockRatingService(stockRatingRepo, jobRepo, externalAPIRepo)
 
 	// Initialize handler
 	handler := truoraHttp.NewHandler(stockRatingSvc)

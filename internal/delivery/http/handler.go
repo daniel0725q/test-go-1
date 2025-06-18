@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/truora/microservice/internal/dto"
 	"github.com/truora/microservice/internal/usecase"
 )
@@ -31,6 +32,10 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/ticker/{ticker}", h.GetStockRatingsByTicker)
 		r.Get("/ticker/{ticker}/latest", h.GetLatestStockRatingByTicker)
 	})
+
+	r.Route("/api/jobs", func(r chi.Router) {
+		r.Get("/{jobId}", h.GetJobByID)
+	})
 }
 
 func (h *Handler) HelloWorld(w http.ResponseWriter, r *http.Request) {
@@ -40,17 +45,39 @@ func (h *Handler) HelloWorld(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetExternalHello(w http.ResponseWriter, r *http.Request) {
-	response, err := h.stockRatingSvc.GetHello(r.Context())
+	job, err := h.stockRatingSvc.GetHello(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]interface{}{
-		"status":  http.StatusOK,
-		"message": "Successfully retrieved hello message",
-		"data":    response,
+	respondWithJSON(w, http.StatusAccepted, map[string]interface{}{
+		"job_id":  job.ID,
+		"status":  job.Status,
+		"message": "Job created successfully. Use /api/jobs/{job_id} to check status.",
 	})
+}
+
+func (h *Handler) GetJobByID(w http.ResponseWriter, r *http.Request) {
+	jobIDStr := chi.URLParam(r, "jobId")
+	jobID, err := uuid.Parse(jobIDStr)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid job ID format")
+		return
+	}
+
+	job, err := h.stockRatingSvc.GetJobByID(r.Context(), jobID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if job == nil {
+		respondWithError(w, http.StatusNotFound, "Job not found")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, job)
 }
 
 func (h *Handler) CreateStockRating(w http.ResponseWriter, r *http.Request) {
