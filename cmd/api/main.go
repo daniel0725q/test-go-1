@@ -88,11 +88,12 @@ func main() {
 		config.ExternalAPI.Token,
 	)
 
-	// Initialize service
+	// Initialize services
 	stockRatingSvc := usecase.NewStockRatingService(stockRatingRepo, jobRepo, externalAPIRepo)
+	stockAlgorithmSvc := usecase.NewStockAlgorithmService(stockRatingRepo)
 
 	// Initialize handler
-	handler := truoraHttp.NewHandler(stockRatingSvc)
+	handler := truoraHttp.NewHandler(stockRatingSvc, stockAlgorithmSvc)
 
 	// Initialize router
 	r := chi.NewRouter()

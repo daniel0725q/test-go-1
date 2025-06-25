@@ -15,6 +15,8 @@ type StockRatingRepository interface {
 	GetByID(ctx context.Context, id uint) (*domain.StockRating, error)
 	GetByTicker(ctx context.Context, ticker string) ([]*domain.StockRating, error)
 	GetLatestByTicker(ctx context.Context, ticker string) (*domain.StockRating, error)
+	GetPaginated(ctx context.Context, offset, limit int) ([]*domain.StockRating, error)
+	GetTotalCount(ctx context.Context) (int64, error)
 }
 
 type stockRatingRepository struct {
@@ -69,4 +71,23 @@ func (r *stockRatingRepository) GetLatestByTicker(ctx context.Context, ticker st
 		return nil, result.Error
 	}
 	return &rating, nil
+}
+
+func (r *stockRatingRepository) GetPaginated(ctx context.Context, offset, limit int) ([]*domain.StockRating, error) {
+	var ratings []*domain.StockRating
+	result := r.db.WithContext(ctx).
+		Order("time DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&ratings)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return ratings, nil
+}
+
+func (r *stockRatingRepository) GetTotalCount(ctx context.Context) (int64, error) {
+	var count int64
+	result := r.db.WithContext(ctx).Model(&domain.StockRating{}).Count(&count)
+	return count, result.Error
 }

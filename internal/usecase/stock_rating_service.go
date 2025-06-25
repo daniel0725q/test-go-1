@@ -17,6 +17,7 @@ type StockRatingService interface {
 	GetStockRatingByID(ctx context.Context, id uint) (*dto.StockRatingResponse, error)
 	GetStockRatingsByTicker(ctx context.Context, ticker string) ([]*dto.StockRatingResponse, error)
 	GetLatestStockRatingByTicker(ctx context.Context, ticker string) (*dto.StockRatingResponse, error)
+	GetPaginatedStockRatings(ctx context.Context, page, pageSize int) (*dto.PaginatedResponse, error)
 	GetHello(ctx context.Context) (*domain.Job, error)
 	GetJobByID(ctx context.Context, jobID uuid.UUID) (*domain.Job, error)
 }
@@ -81,6 +82,44 @@ func (s *stockRatingService) GetLatestStockRatingByTicker(ctx context.Context, t
 		return nil, nil
 	}
 	return dto.FromDomain(rating), nil
+}
+
+func (s *stockRatingService) GetPaginatedStockRatings(ctx context.Context, page, pageSize int) (*dto.PaginatedResponse, error) {
+	// Calculate offset
+	offset := (page - 1) * pageSize
+
+	// Get paginated ratings
+	ratings, err := s.stockRatingRepo.GetPaginated(ctx, offset, pageSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get paginated ratings: %w", err)
+	}
+
+	// Get total count
+	totalCount, err := s.stockRatingRepo.GetTotalCount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get total count: %w", err)
+	}
+
+	// Convert to DTOs
+	responseRatings := make([]*dto.StockRatingResponse, len(ratings))
+	for i, rating := range ratings {
+		responseRatings[i] = dto.FromDomain(rating)
+	}
+
+	// Calculate pagination metadata
+	totalPages := int((totalCount + int64(pageSize) - 1) / int64(pageSize))
+	hasNext := page < totalPages
+	hasPrev := page > 1
+
+	return &dto.PaginatedResponse{
+		Data:       responseRatings,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalCount: totalCount,
+		TotalPages: totalPages,
+		HasNext:    hasNext,
+		HasPrev:    hasPrev,
+	}, nil
 }
 
 func (s *stockRatingService) GetHello(ctx context.Context) (*domain.Job, error) {
